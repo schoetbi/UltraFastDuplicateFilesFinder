@@ -74,6 +74,11 @@ def get_file_hash(filename, limit_size=None, buffer_size=BUFFER_SIZE):
     f.close()
     return hasher.hexdigest()
 
+delpaths = ''
+if len(sys.argv) > 1 and sys.argv[1] == '-d':
+    delpaths = sys.argv[2].split(';')
+    print(delpaths)
+
 files = {}
 hashlist = {}
 totalsize = 0
@@ -128,8 +133,8 @@ for k, g in itertools.groupby(filenamesBySize, selFsize):
 nDupGroups = 0
 nDupFiles = 0
 sizeOfDups = 0
-for hl in hashlist:
-    fileinfos = hashlist[hl]
+deleted = 0
+for hl,fileinfos in sorted(hashlist.iteritems(), key=lambda(k,v):v[0].size):
     if len(fileinfos) > 1:
         print 20 * '-'
         
@@ -138,8 +143,13 @@ for hl in hashlist:
         for fi in fileinfos:
             sizeOfDups += fi.size
             print '(%10s) %s' % (humanize_size(fi.size), fi.filename)
-         
+            for dp in delpaths:
+                if fi.filename.find(dp) == 0:
+                    os.remove(fi.filename)
+                    deleted += fi.size
+                    print ('deleted')
 # final summary
 print 20*'-'
 print 'found %d groups with %d duplicate files with a total size of %s' % \
  (nDupGroups, nDupFiles, humanize_size(sizeOfDups))
+print 'deleted %s'% humanize_size(deleted)
