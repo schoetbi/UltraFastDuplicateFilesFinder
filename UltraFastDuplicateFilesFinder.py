@@ -133,23 +133,34 @@ for k, g in itertools.groupby(filenamesBySize, selFsize):
 nDupGroups = 0
 nDupFiles = 0
 sizeOfDups = 0
-deleted = 0
+deletedFileSize = 0
 for hl,fileinfos in sorted(hashlist.iteritems(), key=lambda(k,v):v[0].size):
     if len(fileinfos) > 1:
         print 20 * '-'
         
         nDupGroups += 1  
-        nDupFiles += len(fileinfos)          
+        nDupFiles += len(fileinfos)
+        filesToDelete = []
         for fi in fileinfos:
             sizeOfDups += fi.size
             print '(%10s) %s' % (humanize_size(fi.size), fi.filename)
             for dp in delpaths:
-                if fi.filename.find(dp) == 0:
-                    os.remove(fi.filename)
-                    deleted += fi.size
-                    print ('deleted')
+                if fi.filename.find(dp) > 0:
+                    filesToDelete.append(fi)
+        
+        if len(fileinfos) == len(filesToDelete):
+            # do not delete all files. Keep the first one
+            keep = filesToDelete[0]
+            print('keep %s' % keep.filename)
+            filesToDelete.remove(keep)
+
+        for toDel in filesToDelete:
+            os.remove(toDel.filename)
+            deletedFileSize += toDel.size
+            print ('deleted %s' % toDel.filename)
+
 # final summary
 print 20*'-'
 print 'found %d groups with %d duplicate files with a total size of %s' % \
  (nDupGroups, nDupFiles, humanize_size(sizeOfDups))
-print 'deleted %s'% humanize_size(deleted)
+print 'deletedFileSize %s'% humanize_size(deletedFileSize)
