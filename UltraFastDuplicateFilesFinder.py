@@ -70,6 +70,7 @@ def humanize_size(size):
 def parseArgs(argv):
     import argparse
     parser = argparse.ArgumentParser(description='Find duplicate files.')
+    parser.add_argument('dir', metavar='dir', type=str)
     parser.add_argument('-d', metavar='dir', action='append')
     parser.add_argument('--dry', action='store_true')
     parser.add_argument('--min-size', type=int)
@@ -77,6 +78,9 @@ def parseArgs(argv):
 
 args = parseArgs(sys.argv[1:])
 delpaths = args.d
+if delpaths == None:
+	delpaths = []
+	
 dryRun = args.dry
 min_size = args.min_size
 
@@ -85,7 +89,7 @@ totalsize = 0
 totalfiles = 0
 
 # we start here by checking all filesizes
-for path, directories, filelist in os.walk('.'):
+for path, directories, filelist in os.walk(args.dir):
     for relFileName in filelist:
         filename = os.path.join(path, relFileName)
 

@@ -1,52 +1,19 @@
 Ultra Fast Duplicate Files Finder
 =================================
-  by Gautier Portet <kassoulet gmail com>
+  original by Gautier Portet <kassoulet gmail com>
+  modified by schoetbi
 
+Example use:
 
-Takes a list of file from stdin.
-And print the duplicate ones.
+  ./UltraFastDuplicateFilesFinder.py <folder>
 
+Options:
+   -d dir     If duplicate files are found in this directory delete the file
+              if it is not the only one
+   --dry      Do not delete anything. Just try it out
+   --min-size Minimal file size to process
 
-example use:
-
-  find ~/ -size +10M | ./UltraFastDuplicateFilesFinder.py
-
-to find duplicates in your home folder, all files more than 10MB.
-
-UltraFastDuplicateFilesFinder compares only the very beginning of the files.
-Its sufficient for most uses, but use with caution.
-
-But this way is quite useful to detect duplicates within corrupted media files...
-
-
-this is public domain.
-
-
-
-------------------------------------------------------------------------------
-example run, took less than a second to answer...
-
-
-gautier@quad:~/code/tmp$ find /home -size +10M | ./duplicate.py
-      size   filename
-  12467906   /home/gautier/Photos/pict4614.mov
-  12467906   /home/gautier/Photos/Videos/PICT4614.MOV
-
-  13068570   /home/gautier/Photos/pict4588.mov
-  13068570   /home/gautier/Photos/Videos/PICT4588.MOV
-
-[...]
-
-  20865498   /home/gautier/Photos/pict4695.mov
-  20865498   /home/gautier/Photos/Videos/PICT4695.MOV
-
-  28270824   /home/gautier/tmp/tsunami 1 œ ǒǑ.flac
-  28270824   /home/gautier/tmp/tsunami-1.flac
-
-136 files checked (22.75 GiB), 8 duplicates (153.45 MiB).
-
-
-
+   
 
 
 
