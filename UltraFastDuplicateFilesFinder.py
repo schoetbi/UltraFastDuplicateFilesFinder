@@ -16,14 +16,12 @@ with the same size a md5 checksum will be performed.
 import sys
 import os
 import hashlib
-import itertools
-
+import argparse
 
 class FileInfo:
     filename = ""
     size = 0
     hash = ""
-
 
 # read one CHUNK_SIZE bytes to check duplicates
 CHUNK_SIZE = 1024
@@ -35,13 +33,12 @@ BUFFER_SIZE = 64 * 1024
 def get_file_hash(filename, limit_size=None, buffer_size=BUFFER_SIZE):
     """
     Return the md5 hash of given file as an hexadecimal string.
-    
-    limit_size can be used to read only the first n bytes of file.
+    Limit_size can be used to read only the first n bytes of file.
     """
     # open file
 
     try:
-        f = file(filename, "rb")
+        fileToHash = file(filename, "rb")
     except IOError:
         return 'NONE'
 
@@ -50,16 +47,16 @@ def get_file_hash(filename, limit_size=None, buffer_size=BUFFER_SIZE):
 
     if limit_size:
         # get the md5 of beginning of file
-        chunk = f.read(limit_size)
+        chunk = fileToHash.read(limit_size)
         hasher.update(chunk)
     else:
         # get the md5 of whole file
         chunk = True
         while chunk:
-            chunk = f.read(buffer_size)
+            chunk = fileToHash.read(buffer_size)
             hasher.update(chunk)
 
-    f.close()
+    fileToHash.close()
     return hasher.hexdigest()
 
 
@@ -73,48 +70,57 @@ def humanize_size(size):
         if hsize > 0.5:
             return '%.2f %s' % (hsize, suffix)
 
-
-def parseArgs(argv):
-    import argparse
+def parse_arguments(argv):
     parser = argparse.ArgumentParser(description='Find duplicate files.')
-    parser.add_argument('-d', metavar='dir', action='append')
+    parser.add_argument('--dir', metavar='dir', action='append')
+    parser.add_argument('--delete', metavar='del', action='append')
     parser.add_argument('--dry', action='store_true')
     parser.add_argument('--min-size', type=int)
     return parser.parse_args(argv)
 
+parsed_args = parse_arguments(sys.argv[1:])
+nodelPaths = parsed_args.dir
+deletePaths = parsed_args.delete
 
-args = parseArgs(sys.argv[1:])
-delpaths = args.d
-dryRun = args.dry
-min_size = args.min_size
+allPaths = []
+if deletePaths != None:
+    allPaths.extend(deletePaths)
+
+if nodelPaths != None:
+    allPaths.extend(nodelPaths)
+
+dryRun = parsed_args.dry
+min_size = parsed_args.min_size
 
 files = {}
 totalsize = 0
 totalfiles = 0
 
 # we start here by checking all filesizes
-for path, directories, filelist in os.walk('.'):
-    for relFileName in filelist:
-        filename = os.path.join(path, relFileName)
+for dir in allPaths:
+    print 'Indexing directory ', dir
+    for path, directories, filelist in os.walk(dir):
+        for relFileName in filelist:
+            filename = os.path.join(path, relFileName)
 
-        if not os.path.isfile(filename):
-            continue
+            if not os.path.isfile(filename):
+                continue
 
-        size = os.path.getsize(filename)
-        if size < min_size:
-            continue
+            size = os.path.getsize(filename)
+            if size < min_size:
+                continue
 
-        fi = FileInfo()
-        fi.filename = filename
-        fi.size = size
-        files[filename] = fi
-        totalfiles += 1
-        totalsize += size
-        sys.stdout.write('%d files (%s)           \r' %
-                         (totalfiles, humanize_size(totalsize)))
+            fi = FileInfo()
+            fi.filename = filename
+            fi.size = size
+            files[filename] = fi
+            totalfiles += 1
+            totalsize += size
+            sys.stdout.write('%d files (%s)           \r' %
+                             (totalfiles, humanize_size(totalsize)))
 
 print ''
-print("group by size")
+print "group by size"
 
 # group files by size
 hashlist = {}
@@ -130,7 +136,7 @@ for f in files.values():
     if lGroup > 2:
         sizeToHash += f.size
 
-print('calculate hashes of ' + humanize_size(sizeToHash))
+print 'calculate hashes of ' + humanize_size(sizeToHash)
 sizeHashed = 0.0
 for size, filesOfThisSize in filesBySize.iteritems():
     if len(filesOfThisSize) <= 1:
@@ -157,33 +163,38 @@ sizeOfDups = 0
 deletedFileSize = 0
 for hl, fileinfos in sorted(
         hashlist.iteritems(), key=lambda (k, v): v[0].size):
-    if len(fileinfos) > 1:
-        print 20 * '-'
+    if len(fileinfos) <= 1:
+        continue
 
-        nDupGroups += 1
-        nDupFiles += len(fileinfos)
-        filesToDelete = []
-        for fi in fileinfos:
-            sizeOfDups += fi.size
-            print '(%10s) %s' % (humanize_size(fi.size), fi.filename)
-            for dp in delpaths:
-                if fi.filename.find(dp) > 0:
-                    filesToDelete.append(fi)
+    print 20 * '-'
+    nDupGroups += 1
+    nDupFiles += len(fileinfos)
+    filesToDelete = []
+    for fi in fileinfos:
+        sizeOfDups += fi.size
+        print '(%10s) %s' % (humanize_size(fi.size), fi.filename)
+        for dp in deletePaths:
+            if fi.filename.find(dp) >= 0:
+                filesToDelete.append(fi)
 
-        if len(fileinfos) == len(filesToDelete):
-            # do not delete all files. Keep the first one
-            keep = filesToDelete[0]
-            print('keep %s' % keep.filename)
-            filesToDelete.remove(keep)
+    if len(fileinfos) == len(filesToDelete):
+        # do not delete all files. Keep at least one
+        keep = filesToDelete[0]
+        print 'keep %s' % keep.filename
+        filesToDelete.remove(keep)
 
-        for toDel in filesToDelete:
-            if not dryRun:
+    for toDel in filesToDelete:
+        if not dryRun:
+            try:
                 os.remove(toDel.filename)
-                print('deleted %s' % toDel.filename)
-            else:
-                print('simulate deletion of %s' % toDel.filename)
+                print 'deleted %s' % toDel.filename
+            except:
+                print 'failed to delete %s' % toDel.filename
 
-            deletedFileSize += toDel.size
+        else:
+            print 'simulate deletion of %s' % toDel.filename
+
+        deletedFileSize += toDel.size
 
 # final summary
 print 20 * '-'
